@@ -25,6 +25,9 @@ ifeq ($(BUILD_WITH_AMLOGIC_PLAYER),true)
     LOCAL_SRC_FILES +=AmlogicPlayerRender.cpp
     LOCAL_SRC_FILES +=AmlogicPlayerStreamSource.cpp
     LOCAL_SRC_FILES +=AmlogicPlayerStreamSourceListener.cpp
+    LOCAL_SRC_FILES +=AmlogicPlayerExtractorDemux.cpp
+    LOCAL_SRC_FILES +=AmlogicPlayerExtractorDataSource.cpp
+    LOCAL_SRC_FILES +=AmlogicPlayerDataSouceProtocol.cpp
 endif
 
 LOCAL_SHARED_LIBRARIES :=     		\
@@ -41,7 +44,8 @@ LOCAL_SHARED_LIBRARIES :=     		\
 	libstagefright_foundation       \
 	libgui                          \
 	libdl                           \
-	libaah_rtp
+	libaah_rtp			\
+	libdrmframework
 
 LOCAL_STATIC_LIBRARIES := \
         libstagefright_nuplayer                 \
