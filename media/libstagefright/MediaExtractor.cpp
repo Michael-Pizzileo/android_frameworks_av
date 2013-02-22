@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (c) 2012-2013, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,6 +18,7 @@
 //#define LOG_NDEBUG 0
 #define LOG_TAG "MediaExtractor"
 #include <utils/Log.h>
+#include <cutils/properties.h>
 
 #include "include/AMRExtractor.h"
 #include "include/MP3Extractor.h"
@@ -24,12 +26,16 @@
 #include "include/FragmentedMP4Extractor.h"
 #include "include/WAVExtractor.h"
 #include "include/OggExtractor.h"
+#include "include/PCMExtractor.h"
 #include "include/MPEG2PSExtractor.h"
 #include "include/MPEG2TSExtractor.h"
 #include "include/DRMExtractor.h"
 #include "include/WVMExtractor.h"
 #include "include/FLACExtractor.h"
 #include "include/AACExtractor.h"
+#ifdef QCOM_HARDWARE
+#include "include/ExtendedExtractor.h"
+#endif
 
 #include "matroska/MatroskaExtractor.h"
 
@@ -54,6 +60,7 @@ uint32_t MediaExtractor::flags() const {
 sp<MediaExtractor> MediaExtractor::Create(
         const sp<DataSource> &source, const char *mime) {
     sp<AMessage> meta;
+    bool bCheckExtendedExtractor = false;
 
     String8 tmp;
     if (mime == NULL) {
@@ -100,6 +107,9 @@ sp<MediaExtractor> MediaExtractor::Create(
         } else {
             ret = new MPEG4Extractor(source);
         }
+#ifdef QCOM_ENHANCED_AUDIO
+       bCheckExtendedExtractor = true;
+#endif
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_MPEG)) {
         ret = new MP3Extractor(source, meta);
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AMR_NB)
@@ -122,6 +132,10 @@ sp<MediaExtractor> MediaExtractor::Create(
         ret = new AACExtractor(source, meta);
     } else if (!strcasecmp(mime, MEDIA_MIMETYPE_CONTAINER_MPEG2PS)) {
         ret = new MPEG2PSExtractor(source);
+#ifdef STE_FM
+    } else if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW)) {
+        ret = new PCMExtractor(source);
+#endif
     }
 
     if (ret != NULL) {
@@ -132,6 +146,49 @@ sp<MediaExtractor> MediaExtractor::Create(
        }
     }
 
+#ifdef QCOM_HARDWARE
+    //If default extractor created and flag is not set to check extended extractor,
+    // then pass default extractor.
+    if (ret && (!bCheckExtendedExtractor) ) {
+        ALOGD("returning default extractor");
+        return ret;
+    }
+
+    //Create Extended Extractor only if default extractor are not selected
+    ALOGV("Using ExtendedExtractor");
+    sp<MediaExtractor> retextParser =  ExtendedExtractor::CreateExtractor(source, mime);
+    //if we came here, it means we do not have to use the default extractor, if created above.
+    bool bUseDefaultExtractor = false;
+
+    if(bCheckExtendedExtractor) {
+        ALOGV("bCheckExtendedExtractor is true");
+        //bCheckExtendedExtractor is true which means default extractor was found
+        // but we want to give preference to extended extractor based on certain
+        // codec type.Set bUseDefaultExtractor to true if extended extractor
+        //does not return specific codec type that we are looking for.
+        bUseDefaultExtractor = true;
+        ALOGV(" bCheckExtendedExtractor is true..checking extended extractor");
+        for (size_t i = 0; (retextParser!=NULL) && (i < retextParser->countTracks()); ++i) {
+            sp<MetaData> meta = retextParser->getTrackMetaData(i);
+            const char *mime;
+            bool success = meta->findCString(kKeyMIMEType, &mime);
+            if( (success == true) && !strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AMR_WB_PLUS)) {
+                ALOGV("Discarding default extractor and using the extended one");
+                //We found what we were looking for, set bUseDefaultExtractor to false;
+                bUseDefaultExtractor = false;
+                if(ret) {
+                    //delete the default extractor as we will be using extended extractor..
+                    delete ret;
+                }
+                break;
+            }
+        }
+    }
+    if( (retextParser != NULL) && (!bUseDefaultExtractor) ) {
+        ALOGV("returning retextParser");
+        return retextParser;
+    }
+#endif
     return ret;
 }
 

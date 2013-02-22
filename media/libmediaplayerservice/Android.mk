@@ -60,7 +60,12 @@ LOCAL_C_INCLUDES :=                                                 \
     $(TOP)/frameworks/av/media/libstagefright/rtsp                  \
     $(TOP)/frameworks/av/media/libstagefright/wifi-display          \
     $(TOP)/frameworks/native/include/media/openmax                  \
-    $(TOP)/external/tremolo/Tremolo                                 \
+    $(TOP)/external/tremolo/Tremolo
+
+ifeq ($(BOARD_USES_QCOM_HARDWARE),true)
+LOCAL_C_INCLUDES += \
+    $(TOP)/hardware/qcom/media/mm-core/inc
+endif
 
 ifeq ($(BUILD_WITH_AMLOGIC_PLAYER),true)
 AMPLAYER_APK_DIR=$(TOP)/device/ainol/elf2/packages/LibPlayer/

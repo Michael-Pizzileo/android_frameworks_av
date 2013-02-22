@@ -1,6 +1,7 @@
 /*
 **
 ** Copyright 2008, The Android Open Source Project
+** Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
 **
 ** Licensed under the Apache License, Version 2.0 (the "License");
 ** you may not use this file except in compliance with the License.
@@ -62,7 +63,12 @@ status_t AudioRecord::getMinFrameCount(
     // We double the size of input buffer for ping pong use of record buffer.
     size <<= 1;
 
-    if (audio_is_linear_pcm(format)) {
+#ifdef QCOM_ENHANCED_AUDIO
+    if (audio_is_linear_pcm(format) || format == AUDIO_FORMAT_AMR_WB)
+#else
+    if (audio_is_linear_pcm(format))
+#endif
+    {
         int channelCount = popcount(channelMask);
         size /= channelCount * audio_bytes_per_sample(format);
     }
@@ -156,7 +162,11 @@ status_t AudioRecord::set(
         return BAD_VALUE;
     }
 
+#ifdef QCOM_HARDWARE
+    int channelCount = popcount((channelMask) & (AUDIO_CHANNEL_IN_STEREO | AUDIO_CHANNEL_IN_MONO | AUDIO_CHANNEL_IN_5POINT1));
+#else
     int channelCount = popcount(channelMask);
+#endif
 
     if (sessionId == 0 ) {
         mSessionId = AudioSystem::newAudioSessionId();

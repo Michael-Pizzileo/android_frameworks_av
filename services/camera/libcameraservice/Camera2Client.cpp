@@ -1111,7 +1111,7 @@ status_t Camera2Client::takePicture(int msgType) {
     // Need HAL to have correct settings before (possibly) triggering precapture
     syncWithDevice();
 
-    res = mCaptureSequencer->startCapture();
+    res = mCaptureSequencer->startCapture(msgType);
     if (res != OK) {
         ALOGE("%s: Camera %d: Unable to start capture: %s (%d)",
                 __FUNCTION__, mCameraId, strerror(-res), res);
@@ -1430,11 +1430,13 @@ void Camera2Client::notifyAutoFocus(uint8_t newState, int triggerId) {
         }
     }
     if (sendMovingMessage) {
+#ifndef OMAP_ICS_CAMERA
         SharedCameraClient::Lock l(mSharedCameraClient);
         if (l.mCameraClient != 0) {
             l.mCameraClient->notifyCallback(CAMERA_MSG_FOCUS_MOVE,
                     afInMotion ? 1 : 0, 0);
         }
+#endif
     }
     if (sendCompletedMessage) {
         SharedCameraClient::Lock l(mSharedCameraClient);
